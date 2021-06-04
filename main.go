@@ -16,15 +16,15 @@ import (
 )
 
 func main()  {
-	pflag.String("input-type", "http", "Which input to start: vector, http")
+	pflag.String("input-type", "http", "Which input to start: vector, http, vectorv2")
 	pflag.Uint("graceful-timeout", 10, "How many seconds to wait for messages to be sent on shutdown")
 	pflag.Uint("channel-buffer-size", 100, "How many messages to hold in channel buffer")
 
-	pflag.String("vector-address", ":9000", "Listen address for vector input")
+	pflag.String("vector-address", ":9000", "Listen address for vector v1/v2 input")
 	pflag.String("vector-timestamp-field", "timestamp", "Name of timestamp field")
 	pflag.String("vector-message-field", "message", "Name of message field")
 	pflag.String("vector-host-field", "host", "Name of host field")
-	pflag.Uint("vector-max-message-size", input.DefaultMaxMessageSize, "Maximum length of single Vector message")
+	pflag.Uint("vector-max-message-size", input.DefaultMaxMessageSize, "Maximum length of single Vector v1 message")
 
 	pflag.String("http-address", ":9000", "Listen address for http input")
 	pflag.String("http-timestamp-field", "timestamp", "Name of timestamp field")
@@ -75,6 +75,13 @@ func main()  {
 		inOpts.MessageField = viper.GetString("vector-message-field")
 		inOpts.TimestampField = viper.GetString("vector-timestamp-field")
 		in = input.NewVectorInput(inOpts)
+	case "vectorv2":
+		inOpts := input.NewVectorV2InputOptions()
+		inOpts.Address = viper.GetString("vector-address")
+		inOpts.HostField = viper.GetString("vector-host-field")
+		inOpts.MessageField = viper.GetString("vector-message-field")
+		inOpts.TimestampField = viper.GetString("vector-timestamp-field")
+		in = input.NewVectorV2Input(inOpts)
 	case "http":
 		inOpts := input.NewHTTPInputOptions()
 		inOpts.Address = viper.GetString("http-address")

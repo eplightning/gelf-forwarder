@@ -1,8 +1,9 @@
 syntax = "proto3";
+package event;
+
+option go_package = "github.com/eplightning/gelf-forwarder/pkg/vector/event";
 
 import "google/protobuf/timestamp.proto";
-
-package event.proto;
 
 message EventWrapper {
   oneof event {

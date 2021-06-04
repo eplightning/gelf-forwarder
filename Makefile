@@ -7,6 +7,18 @@ clean:
 	rm -f gelf-forwarder
 
 proto:
-	protoc --proto_path=proto --go_opt=Mvector/event.proto=github.com/eplightning/gelf-forwarder/pkg/vector --go_out=. --go_opt=module=github.com/eplightning/gelf-forwarder vector/event.proto
+	protoc --proto_path=proto/vector \
+		--go-vtproto_opt=features=marshal+unmarshal+size \
+		--go_opt=module=github.com/eplightning/gelf-forwarder \
+		--go-grpc_opt=module=github.com/eplightning/gelf-forwarder \
+		--go-vtproto_opt=module=github.com/eplightning/gelf-forwarder \
+		--go_out=. --go-vtproto_out=. --go-grpc_out=. vector.proto
+
+	protoc --proto_path=proto/vector \
+		--go-vtproto_opt=features=marshal+unmarshal+size \
+		--go_opt=module=github.com/eplightning/gelf-forwarder \
+		--go-grpc_opt=module=github.com/eplightning/gelf-forwarder \
+		--go-vtproto_opt=module=github.com/eplightning/gelf-forwarder \
+		--go_out=. --go-vtproto_out=. --go-grpc_out=. event.proto
 
 .PHONY: default clean proto

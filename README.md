@@ -11,8 +11,10 @@ Application that receives logs in formats not supported natively by Graylog serv
     - Healthcheck via GET/HEAD methods
     - Returns 429 response if message buffer is full
     - Works well with [vector's](https://vector.dev) `http` sink
-  - Vector protobuf
+  - Vector protobuf (v1)
     - Protocol used by [vector's](https://vector.dev) v0.12 `vector` sink
+  - Vector gRPC (v2)
+    - Used by v0.14 `vector` sink with `version=2`
 - Support for GELF output
   - TCP
   - UDP with optional compression
@@ -36,10 +38,10 @@ Usage of ./gelf-forwarder:
       --http-host-field string          Name of host field (default "host")
       --http-message-field string       Name of message field (default "message")
       --http-timestamp-field string     Name of timestamp field (default "timestamp")
-      --input-type string               Which input to start: vector, http (default "http")
-      --vector-address string           Listen address for vector input (default ":9000")
+      --input-type string               Which input to start: vector, http, vectorv2 (default "http")
+      --vector-address string           Listen address for vector v1/v2 input (default ":9000")
       --vector-host-field string        Name of host field (default "host")
-      --vector-max-message-size uint    Maximum length of single Vector message (default 1048576)
+      --vector-max-message-size uint    Maximum length of single Vector v1 message (default 1048576)
       --vector-message-field string     Name of message field (default "message")
       --vector-timestamp-field string   Name of timestamp field (default "timestamp")
 ```
@@ -51,7 +53,7 @@ INPUT_TYPE=vector ./gelf-forwarder --gelf-proto=tcp
 
 Docker image is available on Dockerhub:
 ```
-docker run --rm bslawianowski/gelf-forwarder:v0.1.0 --help
+docker run --rm bslawianowski/gelf-forwarder:v0.2.0 --help
 ```
 
 ## Configuration tips
