@@ -14,7 +14,8 @@ Application that receives logs in formats not supported natively by Graylog serv
   - Vector protobuf (v1)
     - Protocol used by [vector's](https://vector.dev) v0.12 `vector` sink
   - Vector gRPC (v2)
-    - Used by v0.14 `vector` sink with `version=2`
+    - Used by v0.15 `vector` sink with `version=2`
+    - Not compatible with v0.14, please use older gelf-forwarder if you need it (`bslawianowski/gelf-forwarder:v0.2.0`)
 - Support for GELF output
   - TCP
   - UDP with optional compression
@@ -53,7 +54,7 @@ INPUT_TYPE=vector ./gelf-forwarder --gelf-proto=tcp
 
 Docker image is available on Dockerhub:
 ```
-docker run --rm bslawianowski/gelf-forwarder:v0.2.0 --help
+docker run --rm ghcr.io/eplightning/gelf-forwarder:v0.3.0 --help
 ```
 
 ## Configuration tips
