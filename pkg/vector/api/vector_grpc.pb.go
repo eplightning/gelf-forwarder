@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VectorClient interface {
-	PushEvents(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error)
+	PushEvents(ctx context.Context, in *PushEventsRequest, opts ...grpc.CallOption) (*PushEventsResponse, error)
 	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 }
 
@@ -30,8 +30,8 @@ func NewVectorClient(cc grpc.ClientConnInterface) VectorClient {
 	return &vectorClient{cc}
 }
 
-func (c *vectorClient) PushEvents(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error) {
-	out := new(EventResponse)
+func (c *vectorClient) PushEvents(ctx context.Context, in *PushEventsRequest, opts ...grpc.CallOption) (*PushEventsResponse, error) {
+	out := new(PushEventsResponse)
 	err := c.cc.Invoke(ctx, "/vector.Vector/PushEvents", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (c *vectorClient) HealthCheck(ctx context.Context, in *HealthCheckRequest, 
 // All implementations must embed UnimplementedVectorServer
 // for forward compatibility
 type VectorServer interface {
-	PushEvents(context.Context, *EventRequest) (*EventResponse, error)
+	PushEvents(context.Context, *PushEventsRequest) (*PushEventsResponse, error)
 	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
 	mustEmbedUnimplementedVectorServer()
 }
@@ -61,7 +61,7 @@ type VectorServer interface {
 type UnimplementedVectorServer struct {
 }
 
-func (UnimplementedVectorServer) PushEvents(context.Context, *EventRequest) (*EventResponse, error) {
+func (UnimplementedVectorServer) PushEvents(context.Context, *PushEventsRequest) (*PushEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PushEvents not implemented")
 }
 func (UnimplementedVectorServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
@@ -81,7 +81,7 @@ func RegisterVectorServer(s grpc.ServiceRegistrar, srv VectorServer) {
 }
 
 func _Vector_PushEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EventRequest)
+	in := new(PushEventsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func _Vector_PushEvents_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/vector.Vector/PushEvents",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VectorServer).PushEvents(ctx, req.(*EventRequest))
+		return srv.(VectorServer).PushEvents(ctx, req.(*PushEventsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

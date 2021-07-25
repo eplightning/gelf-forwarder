@@ -84,16 +84,18 @@ func (v *VectorV2Input) Listen(msgCh chan *gelf.Message, stopCh chan interface{}
 	return v.server.Serve(v.listener)
 }
 
-func (v *VectorV2Input) PushEvents(ctx context.Context, req *api.EventRequest) (*api.EventResponse, error) {
-	msg, err := v.schema.eventToGelf(req.Message)
-	if err != nil {
-		v.log.Errorf("Unable to convert message to GELF, ignoring: %v", err)
-		return &api.EventResponse{}, nil
+func (v *VectorV2Input) PushEvents(ctx context.Context, req *api.PushEventsRequest) (*api.PushEventsResponse, error) {
+	// TODO: for now this will always block if full, should we error out instead?
+	for _, e := range req.Events {
+		msg, err := v.schema.eventToGelf(e)
+		if err != nil {
+			v.log.Errorf("Unable to convert message to GELF, ignoring: %v", err)
+		} else {
+			v.msgCh <- msg
+		}
 	}
 
-	v.msgCh <- msg
-
-	return &api.EventResponse{}, nil
+	return &api.PushEventsResponse{}, nil
 }
 
 func (v *VectorV2Input) HealthCheck(ctx context.Context, req *api.HealthCheckRequest) (*api.HealthCheckResponse, error) {

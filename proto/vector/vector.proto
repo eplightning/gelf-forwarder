@@ -5,11 +5,11 @@ option go_package = "github.com/eplightning/gelf-forwarder/pkg/vector/api";
 
 import "event.proto";
 
-message EventRequest {
-  event.EventWrapper message = 1;
+message PushEventsRequest {
+  repeated event.EventWrapper events = 1;
 }
 
-message EventResponse {}
+message PushEventsResponse {}
 
 enum ServingStatus {
   SERVING = 0;
@@ -23,7 +23,7 @@ message HealthCheckResponse {
 }
 
 service Vector {
-  rpc PushEvents(EventRequest) returns (EventResponse) {}
+  rpc PushEvents(PushEventsRequest) returns (PushEventsResponse) {}
 
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
