@@ -1,6 +1,12 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
+
 	"github.com/Graylog2/go-gelf/gelf"
 	"github.com/eplightning/gelf-forwarder/pkg/input"
 	"github.com/eplightning/gelf-forwarder/pkg/output"
@@ -8,11 +14,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
-	"strings"
-	"sync"
-	"syscall"
 )
 
 func main()  {
@@ -30,11 +31,18 @@ func main()  {
 	pflag.String("http-timestamp-field", "timestamp", "Name of timestamp field")
 	pflag.String("http-message-field", "message", "Name of message field")
 	pflag.String("http-host-field", "host", "Name of host field")
+	pflag.String("http-basic-user", "", "Username for HTTP Basic authentication. Authentication is not required if empty (default)")
+	pflag.String("http-basic-pass", "", "Password for HTTP Basic authentication. Only used if username was set")
 
 	pflag.String("gelf-address", "127.0.0.1:12201", "Address of GELF server")
 	pflag.String("gelf-proto", "udp", "Protocol of GELf server")
 	pflag.Int("gelf-max-retries", 3, "How many times to retry sending message in case of failure, -1 means infinity")
 	pflag.Bool("gelf-compression", true, "Enable compression for UDP")
+
+	pflag.Bool("tls-enabled", false, "Use TLS for input")
+	pflag.String("tls-cert-path", "", "Path to PEM-encoded certificate to be used for TLS server. Required if TLS was enabled")
+	pflag.String("tls-key-path", "", "Path to PEM-encoded key to be used for TLS server. Required if TLS was enabled")
+	pflag.String("tls-client-ca-path", "", "Path to PEM-encoded CA bundle to be used for client certificate verification. When provided, TLS client authentication will be enabled and required")
 
 	pflag.Parse()
 
@@ -74,6 +82,7 @@ func main()  {
 		inOpts.HostField = viper.GetString("vector-host-field")
 		inOpts.MessageField = viper.GetString("vector-message-field")
 		inOpts.TimestampField = viper.GetString("vector-timestamp-field")
+		inOpts.TLS = createTLSOptions()
 		in = input.NewVectorInput(inOpts)
 	case "vectorv2":
 		inOpts := input.NewVectorV2InputOptions()
@@ -81,6 +90,7 @@ func main()  {
 		inOpts.HostField = viper.GetString("vector-host-field")
 		inOpts.MessageField = viper.GetString("vector-message-field")
 		inOpts.TimestampField = viper.GetString("vector-timestamp-field")
+		inOpts.TLS = createTLSOptions()
 		in = input.NewVectorV2Input(inOpts)
 	case "http":
 		inOpts := input.NewHTTPInputOptions()
@@ -88,6 +98,9 @@ func main()  {
 		inOpts.HostField = viper.GetString("http-host-field")
 		inOpts.MessageField = viper.GetString("http-message-field")
 		inOpts.TimestampField = viper.GetString("http-timestamp-field")
+		inOpts.BasicUser = viper.GetString("http-basic-user")
+		inOpts.BasicPass = viper.GetString("http-basic-pass")
+		inOpts.TLS = createTLSOptions()
 		in = input.NewHTTPInput(inOpts)
 	default:
 		panic("invalid input type")
@@ -117,4 +130,13 @@ func main()  {
 	}()
 
 	wg.Wait()
+}
+
+func createTLSOptions() util.TLSInputOptions {
+	return util.TLSInputOptions{
+		Enabled:        viper.GetBool("tls-enabled"),
+		ServerCertPath: viper.GetString("tls-cert-path"),
+		ServerKeyPath:  viper.GetString("tls-key-path"),
+		ClientCAPath:   viper.GetString("tls-client-ca-path"),
+	}
 }

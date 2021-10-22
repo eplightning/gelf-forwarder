@@ -3,11 +3,8 @@ package input
 import (
 	"compress/gzip"
 	"compress/zlib"
+	"crypto/subtle"
 	"fmt"
-	"github.com/Graylog2/go-gelf/gelf"
-	"github.com/eplightning/gelf-forwarder/pkg/util"
-	"github.com/valyala/fastjson"
-	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
 	"net"
@@ -15,6 +12,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Graylog2/go-gelf/gelf"
+	"github.com/eplightning/gelf-forwarder/pkg/util"
+	"github.com/valyala/fastjson"
+	"go.uber.org/zap"
 )
 
 type HTTPInput struct {
@@ -26,6 +28,9 @@ type HTTPInput struct {
 	messageField   string
 	hostField      string
 	log            *zap.SugaredLogger
+	basicUser      string
+	basicPass      string
+	tls            util.TLSInputOptions
 }
 
 type HTTPInputOptions struct {
@@ -33,6 +38,9 @@ type HTTPInputOptions struct {
 	TimestampField string
 	MessageField   string
 	HostField      string
+	BasicUser      string
+	BasicPass      string
+	TLS            util.TLSInputOptions
 }
 
 func NewHTTPInputOptions() HTTPInputOptions {
@@ -50,12 +58,20 @@ func NewHTTPInput(options HTTPInputOptions) *HTTPInput {
 		timestampField: options.TimestampField,
 		messageField:   options.MessageField,
 		hostField:      options.HostField,
+		basicUser:      options.BasicUser,
+		basicPass:      options.BasicPass,
 		log:            zap.S().With("component", "http-input"),
+		tls:            options.TLS,
 	}
 }
 
 func (h *HTTPInput) Start() error {
 	listener, err := net.Listen("tcp", h.address)
+	if err != nil {
+		return err
+	}
+
+	listener, err = util.WrapInputWithTLS(listener, h.tls)
 	if err != nil {
 		return err
 	}
@@ -94,6 +110,10 @@ func (h *HTTPInput) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if !h.authenticate(writer, req) {
+		return
+	}
+
 	msgs, err := h.readMessages(req)
 	if err != nil {
 		h.log.Errorf("Unable to read messages from HTTP request: %v", err)
@@ -114,6 +134,20 @@ func (h *HTTPInput) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	writer.WriteHeader(http.StatusOK)
+}
+
+func (h *HTTPInput) authenticate(writer http.ResponseWriter, req *http.Request) bool {
+	if h.basicUser != "" {
+		user, pass, ok := req.BasicAuth()
+		if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(h.basicUser)) == 0 || subtle.ConstantTimeCompare([]byte(pass), []byte(h.basicPass)) == 0 {
+			writer.Header().Set("WWW-Authenticate", `Basic realm="gelf-forwarder"`)
+			http.Error(writer, "Unauthorized", http.StatusUnauthorized)
+
+			return false
+		}
+	}
+
+	return true
 }
 
 func (h *HTTPInput) readMessages(req *http.Request) ([]*gelf.Message, error) {

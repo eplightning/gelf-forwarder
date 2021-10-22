@@ -3,12 +3,13 @@ package input
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
+	"net"
+
 	"github.com/Graylog2/go-gelf/gelf"
 	"github.com/eplightning/gelf-forwarder/pkg/util"
 	vector "github.com/eplightning/gelf-forwarder/pkg/vector/event"
 	"go.uber.org/zap"
-	"io"
-	"net"
 )
 
 const DefaultMaxMessageSize = 1 * 1024 * 1024
@@ -22,6 +23,7 @@ type VectorInput struct {
 	schema      *vectorSchema
 	maxMsgSize  uint32
 	log         *zap.SugaredLogger
+	tls         util.TLSInputOptions
 }
 
 type VectorInputOptions struct {
@@ -30,6 +32,7 @@ type VectorInputOptions struct {
 	MessageField   string
 	HostField      string
 	MaxMsgSize     uint32
+	TLS            util.TLSInputOptions
 }
 
 func NewVectorInputOptions() VectorInputOptions {
@@ -53,11 +56,17 @@ func NewVectorInput(options VectorInputOptions) *VectorInput {
 			hostField:      options.HostField,
 		},
 		log: zap.S().With("component", "vector-input"),
+		tls: options.TLS,
 	}
 }
 
 func (v *VectorInput) Start() error {
 	listener, err := net.Listen("tcp", v.address)
+	if err != nil {
+		return err
+	}
+
+	listener, err = util.WrapInputWithTLS(listener, v.tls)
 	if err != nil {
 		return err
 	}
