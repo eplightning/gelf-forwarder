@@ -2,14 +2,16 @@ package input
 
 import (
 	"context"
+	"net"
+
 	"github.com/Graylog2/go-gelf/gelf"
+	"github.com/eplightning/gelf-forwarder/pkg/util"
 	"github.com/eplightning/gelf-forwarder/pkg/vector/api"
 	vtgrpc "github.com/planetscale/vtprotobuf/codec/grpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding"
 	_ "google.golang.org/grpc/encoding/proto"
-	"net"
 )
 
 func init() {
@@ -18,12 +20,13 @@ func init() {
 
 type VectorV2Input struct {
 	api.UnimplementedVectorServer
-	address     string
-	listener    net.Listener
-	msgCh       chan *gelf.Message
-	schema      *vectorSchema
-	log         *zap.SugaredLogger
-	server      *grpc.Server
+	address  string
+	listener net.Listener
+	msgCh    chan *gelf.Message
+	schema   *vectorSchema
+	log      *zap.SugaredLogger
+	server   *grpc.Server
+	tls      util.TLSInputOptions
 }
 
 type VectorV2InputOptions struct {
@@ -31,6 +34,7 @@ type VectorV2InputOptions struct {
 	TimestampField string
 	MessageField   string
 	HostField      string
+	TLS            util.TLSInputOptions
 }
 
 func NewVectorV2InputOptions() VectorV2InputOptions {
@@ -51,11 +55,17 @@ func NewVectorV2Input(options VectorV2InputOptions) *VectorV2Input {
 			hostField:      options.HostField,
 		},
 		log: zap.S().With("component", "vector-v2-input"),
+		tls: options.TLS,
 	}
 }
 
 func (v *VectorV2Input) Start() error {
 	listener, err := net.Listen("tcp", v.address)
+	if err != nil {
+		return err
+	}
+
+	listener, err = util.WrapInputWithTLS(listener, v.tls)
 	if err != nil {
 		return err
 	}
@@ -98,6 +108,8 @@ func (v *VectorV2Input) PushEvents(ctx context.Context, req *api.PushEventsReque
 	return &api.PushEventsResponse{}, nil
 }
 
-func (v *VectorV2Input) HealthCheck(ctx context.Context, req *api.HealthCheckRequest) (*api.HealthCheckResponse, error) {
+func (v *VectorV2Input) HealthCheck(ctx context.Context, req *api.HealthCheckRequest) (
+	*api.HealthCheckResponse, error,
+) {
 	return &api.HealthCheckResponse{Status: api.ServingStatus_SERVING}, nil
 }
