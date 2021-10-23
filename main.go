@@ -16,7 +16,45 @@ import (
 	"go.uber.org/zap"
 )
 
-func main()  {
+func main() {
+	setupConfig()
+	setupLogging()
+
+	stopCh := make(chan interface{})
+	msgCh := make(chan *gelf.Message, viper.GetUint("channel-buffer-size"))
+	errCh := make(chan error, 2)
+	wg := &sync.WaitGroup{}
+
+	out := setupOutput()
+	in := setupInput()
+
+	if err := util.RegisterComponent(in, wg, msgCh, stopCh, errCh); err != nil {
+		zap.S().Panic("Could not start input", err)
+	}
+	if err := util.RegisterComponent(out, wg, msgCh, stopCh, errCh); err != nil {
+		zap.S().Panic("Could not start output", err)
+	}
+
+	zap.S().Info("All components ready and listening")
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		select {
+		case err := <-errCh:
+			zap.S().Error("One of the components failed, stopping ...", err)
+		case <-signals:
+			zap.S().Info("Received shutdown signal, stopping ...")
+		}
+
+		close(stopCh)
+	}()
+
+	wg.Wait()
+}
+
+func setupConfig() {
 	pflag.String("input-type", "http", "Which input to start: vector, http, vectorv2")
 	pflag.Uint("graceful-timeout", 10, "How many seconds to wait for messages to be sent on shutdown")
 	pflag.Uint("channel-buffer-size", 100, "How many messages to hold in channel buffer")
@@ -49,31 +87,22 @@ func main()  {
 	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
 		panic("Could not initialize config")
 	}
+
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
+}
 
+func setupLogging() {
 	logger, err := zap.NewProduction()
 	if err != nil {
-		panic("Could not initialize logging")
+		panic("Could not initialize logger")
 	}
 
 	zap.ReplaceGlobals(logger)
+	zap.RedirectStdLog(logger)
+}
 
-	stopCh := make(chan interface{})
-	msgCh := make(chan *gelf.Message, viper.GetUint("channel-buffer-size"))
-	errCh := make(chan error, 2)
-	wg := &sync.WaitGroup{}
-
-	outOpts := output.NewGelfOutputOptions()
-	outOpts.Address = viper.GetString("gelf-address")
-	outOpts.GracefulTimeoutSeconds = viper.GetInt("graceful-timeout")
-	outOpts.RetryLimit = viper.GetInt("gelf-max-retries")
-	outOpts.Compression = viper.GetBool("gelf-compression")
-	outOpts.Proto = viper.GetString("gelf-proto")
-	out := output.NewGelfOutput(outOpts)
-
-	var in util.Component
-
+func setupInput() util.Component {
 	switch viper.GetString("input-type") {
 	case "vector":
 		inOpts := input.NewVectorInputOptions()
@@ -83,7 +112,8 @@ func main()  {
 		inOpts.MessageField = viper.GetString("vector-message-field")
 		inOpts.TimestampField = viper.GetString("vector-timestamp-field")
 		inOpts.TLS = createTLSOptions()
-		in = input.NewVectorInput(inOpts)
+
+		return input.NewVectorInput(inOpts)
 	case "vectorv2":
 		inOpts := input.NewVectorV2InputOptions()
 		inOpts.Address = viper.GetString("vector-address")
@@ -91,7 +121,8 @@ func main()  {
 		inOpts.MessageField = viper.GetString("vector-message-field")
 		inOpts.TimestampField = viper.GetString("vector-timestamp-field")
 		inOpts.TLS = createTLSOptions()
-		in = input.NewVectorV2Input(inOpts)
+
+		return input.NewVectorV2Input(inOpts)
 	case "http":
 		inOpts := input.NewHTTPInputOptions()
 		inOpts.Address = viper.GetString("http-address")
@@ -101,35 +132,22 @@ func main()  {
 		inOpts.BasicUser = viper.GetString("http-basic-user")
 		inOpts.BasicPass = viper.GetString("http-basic-pass")
 		inOpts.TLS = createTLSOptions()
-		in = input.NewHTTPInput(inOpts)
+
+		return input.NewHTTPInput(inOpts)
 	default:
 		panic("invalid input type")
 	}
+}
 
-	if err := util.RegisterComponent(in, wg, msgCh, stopCh, errCh); err != nil {
-		zap.S().Panic("Could not start input", err)
-	}
-	if err := util.RegisterComponent(out, wg, msgCh, stopCh, errCh); err != nil {
-		zap.S().Panic("Could not start output", err)
-	}
+func setupOutput() util.Component {
+	outOpts := output.NewGelfOutputOptions()
+	outOpts.Address = viper.GetString("gelf-address")
+	outOpts.GracefulTimeoutSeconds = viper.GetInt("graceful-timeout")
+	outOpts.RetryLimit = viper.GetInt("gelf-max-retries")
+	outOpts.Compression = viper.GetBool("gelf-compression")
+	outOpts.Proto = viper.GetString("gelf-proto")
 
-	zap.S().Info("All components ready and listening")
-
-	signals := make(chan os.Signal, 10)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-
-	go func() {
-		select {
-		case err := <-errCh:
-			zap.S().Error("One of the components failed, stopping ...", err)
-		case <-signals:
-			zap.S().Info("Received shutdown signal, stopping ...")
-		}
-
-		close(stopCh)
-	}()
-
-	wg.Wait()
+	return output.NewGelfOutput(outOpts)
 }
 
 func createTLSOptions() util.TLSInputOptions {

@@ -84,8 +84,8 @@ func (v *VectorV2Input) Listen(msgCh chan *gelf.Message, stopCh chan interface{}
 	go func() {
 		select {
 		case <-stopCh:
-			v.log.Info("Gracefully stopping gRPC server")
-			v.server.GracefulStop()
+			v.log.Info("Stopping gRPC server")
+			v.server.Stop()
 		}
 	}()
 
