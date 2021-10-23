@@ -60,9 +60,9 @@ All options can be provided via flags or environment variables, for example:
 INPUT_TYPE=vector ./gelf-forwarder --gelf-proto=tcp
 ```
 
-Docker image is available on Dockerhub:
+Docker image is available on Github's GHCR:
 ```
-docker run --rm ghcr.io/eplightning/gelf-forwarder:v0.4.0 --help
+docker run --rm ghcr.io/eplightning/gelf-forwarder:v0.4.1 --help
 ```
 
 ## Configuration tips
