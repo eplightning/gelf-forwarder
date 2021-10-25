@@ -108,11 +108,13 @@ func (h *HTTPInput) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	if req.Method == "GET" || req.Method == "HEAD" {
 		writer.WriteHeader(http.StatusOK)
 		return
+	} else if req.Method == "POST" {
+		if !h.authenticate(writer, req) {
+			return
+		}
 	}
 
-	if !h.authenticate(writer, req) {
-		return
-	}
+
 
 	msgs, err := h.readMessages(req)
 	if err != nil {
