@@ -63,7 +63,7 @@ INPUT_TYPE=vector ./gelf-forwarder --gelf-proto=tcp
 
 Docker image is available on Github's GHCR:
 ```
-docker run --rm ghcr.io/eplightning/gelf-forwarder:v0.4.1 --help
+docker run --rm ghcr.io/eplightning/gelf-forwarder:latest --help
 ```
 
 ## Configuration tips
