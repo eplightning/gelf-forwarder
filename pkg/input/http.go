@@ -31,6 +31,7 @@ type HTTPInput struct {
 	basicUser      string
 	basicPass      string
 	tls            util.TLSInputOptions
+	backpressure   bool
 }
 
 type HTTPInputOptions struct {
@@ -41,6 +42,7 @@ type HTTPInputOptions struct {
 	BasicUser      string
 	BasicPass      string
 	TLS            util.TLSInputOptions
+	Backpressure   bool
 }
 
 func NewHTTPInputOptions() HTTPInputOptions {
@@ -62,6 +64,7 @@ func NewHTTPInput(options HTTPInputOptions) *HTTPInput {
 		basicPass:      options.BasicPass,
 		log:            zap.S().With("component", "http-input"),
 		tls:            options.TLS,
+		backpressure:   options.Backpressure,
 	}
 }
 
@@ -105,7 +108,7 @@ func (h *HTTPInput) Listen(msgCh chan *gelf.Message, stopCh chan interface{}) er
 }
 
 func (h *HTTPInput) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
-	if req.Method == "GET" || req.Method == "HEAD" {
+	if req.Method == "GET" || req.Method == "HEAD" || req.Method == "OPTIONS" {
 		writer.WriteHeader(http.StatusOK)
 		return
 	}
@@ -124,7 +127,7 @@ func (h *HTTPInput) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		h.log.Warnf("Received 0 messages")
 	}
 
-	if len(msgs)+len(h.msgCh) > cap(h.msgCh) {
+	if h.backpressure && len(msgs)+len(h.msgCh) > cap(h.msgCh) {
 		writer.WriteHeader(http.StatusTooManyRequests)
 		return
 	}

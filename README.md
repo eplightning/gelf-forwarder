@@ -9,8 +9,8 @@ Application that receives logs in formats not supported natively by Graylog serv
     - Supports both JSON array and whitespace delimited JSON (ndjson) formats
     - Optional HTTP Basic authentication
     - Body compression (gzip / zlib)
-    - Healthcheck via GET/HEAD methods
-    - Returns 429 response if message buffer is full
+    - Healthcheck via GET/HEAD/OPTIONS methods
+    - Returns 429 response if message buffer is full (optional, enabled by default)
     - Works well with [vector's](https://vector.dev) `http` sink
   - Vector protobuf (v1)
     - Protocol used by [vector's](https://vector.dev) v0.12 `vector` sink
@@ -31,6 +31,7 @@ Application that receives logs in formats not supported natively by Graylog serv
 
 ```
 Usage of ./gelf-forwarder:
+      --backpressure                    Enable input backpressure (default true)
       --channel-buffer-size uint        How many messages to hold in channel buffer (default 100)
       --gelf-address string             Address of GELF server (default "127.0.0.1:12201")
       --gelf-compression                Enable compression for UDP (default true)
@@ -52,7 +53,7 @@ Usage of ./gelf-forwarder:
       --vector-host-field string        Name of host field (default "host")
       --vector-max-message-size uint    Maximum length of single Vector v1 message (default 1048576)
       --vector-message-field string     Name of message field (default "message")
-      --vector-timestamp-field string   Name of timestamp field (default "timestamp")
+      --vector-timestamp-field string   Name of timestamp field (default "timestamp"
 ```
 
 All options can be provided via flags or environment variables, for example:

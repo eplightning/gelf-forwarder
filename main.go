@@ -58,6 +58,7 @@ func setupConfig() {
 	pflag.String("input-type", "http", "Which input to start: vector, http, vectorv2")
 	pflag.Uint("graceful-timeout", 10, "How many seconds to wait for messages to be sent on shutdown")
 	pflag.Uint("channel-buffer-size", 100, "How many messages to hold in channel buffer")
+	pflag.Bool("backpressure", true, "Enable input backpressure")
 
 	pflag.String("vector-address", ":9000", "Listen address for vector v1/v2 input")
 	pflag.String("vector-timestamp-field", "timestamp", "Name of timestamp field")
@@ -132,6 +133,7 @@ func setupInput() util.Component {
 		inOpts.BasicUser = viper.GetString("http-basic-user")
 		inOpts.BasicPass = viper.GetString("http-basic-pass")
 		inOpts.TLS = createTLSOptions()
+		inOpts.Backpressure = viper.GetBool("backpressure")
 
 		return input.NewHTTPInput(inOpts)
 	default:
